@@ -3,12 +3,13 @@
 #include <stdio.h>
 #include <regex.h>
 #include <unistd.h>
+#include <ctype.h>
 
 void getValidName(char *buffer);
 int getValidNum();
 void getValidFileName(char *buffer);
 void getValidPassword(char *buffer);
-int validatePassword(char *password1, char *password2);
+int validatePassword(const char *buffer);
 int match(const char *string, const char *pattern);
 
 int main()
@@ -43,14 +44,17 @@ int main()
     //printf("You entered %s", outputFile);
     //FILE *outputFilePtr = fopen(outputFile, "w");
 
-    // get, store, and validate password
     char password1[50];
     char password2[50];
+    int result = 1;
     do
     {
         getValidPassword(password1);
         getValidPassword(password2);
-    } while (validatePassword(password1, password2) != 0);
+        result = strcmp(password1, password2);
+        if (result != 0)
+            printf("Passwords do not match. Try again.\n");
+    } while (result != 0);
 
     printf("You entered %s and %s", password1, password2);
     int sum = num1 + num2;
@@ -86,9 +90,21 @@ void getValidFileName(char *buffer)
     int valid = 0;
     do
     {
+        char cwd[50];
+        size_t size = 50;
+        getcwd(cwd, size);
         printf("Enter a file name in the current directory: ");
         scanf("%49[^\n]%*c", buffer);
-        valid = match(buffer, "");
+
+        //char *cwd;
+        //getcwd(cwd, 50);
+        //const char *regex = ")?[\\\\|/]?(?!.*\\.\\.(\\\\|/))[a-zA-Z0-9\\.]+\\.txt$";
+        //char *cwdAndRegex;
+        //cwdAndRegex = malloc(strlen("^(") + strlen(cwd) + strlen(regex));
+        //strncpy(cwdAndRegex, ")?", )
+        //strcat(cwdAndRegex, cwd, strlen(cwd));
+        //strcat(cwdAndRegex, regex, strlen(regex));
+        //valid = match(buffer, cwdAndRegex);
     } while (valid == 0);
     printf("You entered: %s\n", buffer);
 }
@@ -98,26 +114,49 @@ void getValidPassword(char *buffer)
     int valid = 0;
     do
     {
-        printf("Enter a password that contains at least 10 characters and includes at least one upper case character, lower case character, digit, punctuation mark: ");
+        printf("Enter a password that is between 10 and 32 characters in length, and contains at least one upper case character, lower case character, digit, and punctuation mark: ");
         scanf("%49[^\n]%*c", buffer);
-        printf("You entered %s\n", buffer);
-        valid = match(buffer, "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[\\@\\$\\!\\*\\?\\&\\#\\^])[A-Za-z\\d\\@\\$\\!\\*\\?\\&\\#\\^]{10,}$");
+        valid = validatePassword(buffer);
     } while (valid == 0);
-    printf("You entered: %s\n", buffer);
 }
 
-int validatePassword(char *password1, char *password2)
+int validatePassword(const char *password)
 {
-    return strcmp(password1, password2);
+    const char *p = password;
+    char c;
+    int count = 0;
+    int upper = 0;
+    int lower = 0;
+    int digit = 0;
+    int special = 0;
+    while (*p)
+    {
+        count++;
+        c = *p++;
+        if (isupper(c))
+            ++upper;
+        else if (islower(c))
+            ++lower;
+        else if (isdigit(c))
+            ++digit;
+        else if (ispunct(c))
+            ++special;
+        else
+            continue; // space character
+    }
+    return upper && lower && digit && special;
 }
 
 int match(const char *string, const char *pattern)
 {
     regex_t regex;
-    if (regcomp(&regex, pattern, REG_EXTENDED | REG_NOSUB) != 0)
+    if (regcomp(&regex, pattern, REG_NOSUB) != 0)
+    {
+        printf("Didn't compile");
         return 0;
+    }
     int status = regexec(&regex, string, 0, NULL, 0);
-    printf("%d", status);
+    printf("status: %d\n", status);
     regfree(&regex);
     if (status != 0)
         return 0;
