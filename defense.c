@@ -11,7 +11,7 @@ int getValidNum();
 void getValidFileName(char *buffer);
 void getValidPassword(char *buffer);
 int validatePassword(const char *buffer);
-void writeToOutput(FILE *file1, FILE *file2, const char *first, const char *last, int sum, int product);
+void writeToOutputFile(FILE *file1, FILE *file2, const char *first, const char *last, int sum, int product);
 int match(const char *string, const char *pattern);
 
 int main() // compile with: gcc -pedantic -Wall -Wextra -Werror defense defense.c
@@ -52,7 +52,7 @@ int main() // compile with: gcc -pedantic -Wall -Wextra -Werror defense defense.
 
     FILE *inputFilePtr = fopen(inputFile, "r");
     FILE *outputFilePtr = fopen(outputFile, "a");
-    writeToOutput(inputFilePtr, outputFilePtr, firstName, lastName, num1 + num2, num1 * num2);
+    writeToOutputFile(inputFilePtr, outputFilePtr, firstName, lastName, num1 + num2, num1 * num2);
 }
 
 int getValidNum()
@@ -73,8 +73,14 @@ int getValidNum()
 
 void getValidName(char *buffer)
 {
-    if (scanf("%49[^\n]%*c", buffer) == 1)
-        printf("You entered %s\n", buffer);
+    int valid = 0;
+    do
+    {
+        valid = scanf("%49[^\n]%*c", buffer);
+        if (valid == 0)
+            printf("Supplied name was too large. Enter a name: ");
+    } while (valid == 0);
+    printf("You entered %s\n", buffer);
 }
 
 void getValidFileName(char *buffer)
@@ -83,17 +89,7 @@ void getValidFileName(char *buffer)
     do
     {
         printf("Enter a file name in the current directory: ");
-        scanf("%49[^\n]%*c", buffer);
-
-        char *cwd;
-        getcwd(cwd, 50);
-        const char *regex = ")?[\\\\|/]?(?!.*\\.\\.(\\\\|/))[a-zA-Z0-9\\.]+\\.txt$";
-        char *cwdAndRegex;
-        cwdAndRegex = malloc(strlen("^(") + strlen(cwd) + strlen(regex));
-        //strncpy(cwdAndRegex, ")?", );
-        //strcat(cwdAndRegex, cwd, strlen(cwd));
-        //strcat(cwdAndRegex, regex, strlen(regex));
-        valid = match(buffer, cwdAndRegex);
+        valid = scanf("%49[^\n]%*c", buffer);
     } while (valid == 0);
     printf("You entered: %s\n", buffer);
 }
@@ -136,7 +132,7 @@ int validatePassword(const char *password)
     return upper && lower && digit && special && count > 7 && count < 33;
 }
 
-void writeToOutput(FILE *file1, FILE *file2, const char *first, const char *last, int sum, int product)
+void writeToOutputFile(FILE *file1, FILE *file2, const char *first, const char *last, int sum, int product)
 {
     if (file1 == NULL || file2 == NULL)
     {
