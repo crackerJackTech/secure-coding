@@ -6,35 +6,45 @@
 #include <ctype.h>
 #include <errno.h>
 
-void getValidName(char *buffer);
+void getValidName(char *buffer, FILE *errorFile);
 int getValidNum();
-void getValidFileName(char *buffer);
+void getValidFileName(char *buffer, FILE *errorFile);
 void getValidPassword(char *buffer);
 int validatePassword(const char *buffer);
-void writeToOutputFile(FILE *file1, FILE *file2, const char *first, const char *last, int sum, int product);
-int match(const char *string, const char *pattern);
+void writeToOutputFile(FILE *inputFile, FILE *outputFile, FILE *errorFile, const char *first, const char *last, int sum, int product);
+int match(const char *string, const char *pattern, int ignoreCase, FILE *errorFile);
 
-int main() // compile with: gcc -pedantic -Wall -Wextra -Werror defense defense.c
+
+int main() // compile with: gcc -pedantic -Wall -Wextra -Werror defense.c -o defense
 {
+    char *errorFileName = "error.txt";
+    if (!access(errorFileName, 0))
+        remove(errorFileName);
+    FILE *errorFile = fopen(errorFileName, "w");
+
     char firstName[50];
     char lastName[50];
+
     printf("Enter your first name: ");
-    getValidName(firstName);
+    getValidName(firstName, errorFile);
+
     printf("Enter your last name: ");
-    getValidName(lastName);
+    getValidName(lastName, errorFile);
+
     printf("Hello, %s %s\n", firstName, lastName);
 
+    
+    
+
     int num1 = getValidNum();
+
     int num2 = getValidNum();
     printf("You entered %d and %d\n", num1, num2);
 
-    char inputFile[50];
-    getValidFileName(inputFile);
-    printf("You entered %s", inputFile);
-
-    char outputFile[50];
-    getValidFileName(outputFile);
-    printf("You entered %s", outputFile);
+    char inputFileName[50];
+    getValidFileName(inputFileName, errorFile);
+    char outputFileName[50];
+    getValidFileName(outputFileName, errorFile);
 
     char password1[50];
     char password2[50];
@@ -45,51 +55,62 @@ int main() // compile with: gcc -pedantic -Wall -Wextra -Werror defense defense.
         getValidPassword(password2);
         result = strcmp(password1, password2);
         if (result != 0)
-            printf("Passwords do not match. Try again.\n");
+            fprintf(errorFile, "Passwords do not match. Try again.\n");
     } while (result != 0);
 
     printf("You entered %s and %s", password1, password2);
 
-    FILE *inputFilePtr = fopen(inputFile, "r");
-    FILE *outputFilePtr = fopen(outputFile, "a");
-    writeToOutputFile(inputFilePtr, outputFilePtr, firstName, lastName, num1 + num2, num1 * num2);
+    FILE *inputFile = fopen(inputFileName, "r");
+    FILE *outputFile = fopen(outputFileName, "a");
+
+    writeToOutputFile(inputFile, outputFile, errorFile, firstName, lastName, num1 + num2, num1 * num2);
 }
 
 int getValidNum()
 {
-    int num;
+    int num = 0;
     char buf[1024];
-    do
+
+    while(num == 0)
     {
-        printf("Enter any integer besides 0: ");
-        if (!fgets(buf, 1024, stdin))
-            return 1;
-        num = atoi(buf);
-    } while (num == 0);
+	printf("Enter any integer: ");
+	if(fgets(buf, 1024, stdin) != NULL)
+	{
+		num = atoi(buf);
+	}
+
+
+    }
+
+
 
     printf("You entered %d.\n", num);
     return num;
 }
 
-void getValidName(char *buffer)
+void getValidName(char *buffer, FILE *errorFile) //currently buffer overflowing
 {
     int valid = 0;
     do
     {
-        valid = scanf("%49[^\n]%*c", buffer);
+        scanf("%s", buffer);
+        valid = match(buffer, "[[:alpha:]]\\{1,50\\}", 0, errorFile);
         if (valid == 0)
-            printf("Supplied name was too large. Enter a name: ");
+            printf("\nEnter a name: ");
     } while (valid == 0);
+
     printf("You entered %s\n", buffer);
+    setbuf(stdin, NULL);
 }
 
-void getValidFileName(char *buffer)
+void getValidFileName(char *buffer, FILE *errorFile)
 {
     int valid = 0;
     do
     {
         printf("Enter a file name in the current directory: ");
-        valid = scanf("%49[^\n]%*c", buffer);
+        scanf("%s", buffer);
+        valid = match(buffer, "^(\\./)?[A-Za-z -_]+.txt$", 1, errorFile);
     } while (valid == 0);
     printf("You entered: %s\n", buffer);
 }
@@ -100,7 +121,7 @@ void getValidPassword(char *buffer)
     do
     {
         printf("Enter a password between 8 and 32 characters in length, that contains at least one upper case character, lower case character, digit, and punctuation mark: ");
-        scanf("%49[^\n]%*c", buffer);
+        scanf("%s", buffer);
         valid = validatePassword(buffer);
     } while (valid == 0);
 }
@@ -132,41 +153,56 @@ int validatePassword(const char *password)
     return upper && lower && digit && special && count > 7 && count < 33;
 }
 
-void writeToOutputFile(FILE *file1, FILE *file2, const char *first, const char *last, int sum, int product)
+void writeToOutputFile(FILE *inputFile, FILE *outputFile, FILE *errorFile, const char *first, const char *last, int sum, int product)
 {
-    if (file1 == NULL || file2 == NULL)
+    if (inputFile == NULL || outputFile == NULL)
     {
-        printf("ERROR: could not open input or output file\n");
-        printf("The error was: %s\n", strerror(errno));
+        fprintf(errorFile, "ERROR: could not open input or output file:\n");
+        fclose(errorFile);
         return;
     }
 
-    fprintf(file2, "%s ", first);
-    fprintf(file2, "%s\n", last);
-    fprintf(file2, "%d", sum);
-    fprintf(file2, "%d", product);
+    fprintf(outputFile, "First Name: %s\n", first);
+    fprintf(outputFile, "Last Name: %s\n", last);
+    fprintf(outputFile, "Sum: %d\n", sum);
+    fprintf(outputFile, "Product: %d\n", product);
 
     char ch;
-    while ((ch = getc(file1)) != EOF)
+    while ((ch = getc(inputFile)) != EOF)
     {
-        putc(ch, file2);
+        putc(ch, outputFile);
     }
-    fclose(file1);
-    fclose(file2);
+    fclose(inputFile);
+    fclose(outputFile);
+    fclose(errorFile);
 }
 
-int match(const char *string, const char *pattern)
+int match(const char *string, const char *pattern, int ignoreCase, FILE *errorFile)
 {
     regex_t regex;
-    if (regcomp(&regex, pattern, REG_NOSUB) != 0)
+    if (ignoreCase == 1)
     {
-        printf("Regex didn't compile...");
-        return 0;
+        if (regcomp(&regex, pattern, REG_NOSUB | REG_ICASE | REG_EXTENDED) != 0)
+        {
+            return 0;
+        }
+    }
+    else
+    {
+        if (regcomp(&regex, pattern, REG_NOSUB) != 0)
+        {
+            return 0;
+        }
     }
     int status = regexec(&regex, string, 0, NULL, 0);
-    printf("Regex Status (0 for match): %d\n", status);
     regfree(&regex);
     if (status != 0)
+    {
+        printf("The supplied input \"%s\" did not match against the regex \"%s\"\n", string, pattern);
+        fprintf(errorFile, "The supplied input \"%s\" did not match against the regex \"%s\"\n", string, pattern);
         return 0;
+    }
     return 1;
 }
+
+
