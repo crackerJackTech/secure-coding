@@ -14,30 +14,21 @@ int validatePassword(const char *buffer);
 void writeToOutputFile(FILE *inputFile, FILE *outputFile, FILE *errorFile, const char *first, const char *last, int sum, int product);
 int match(const char *string, const char *pattern, int ignoreCase, FILE *errorFile);
 
-
-int main() // compile with: gcc -pedantic -Wall -Wextra -Werror defense.c -o defense
+int main() // compile with: gcc -pedantic -Wall -Wextra -Werror defense defense.c
 {
-    char *errorFileName = "error.txt";
-    if (!access(errorFileName, 0))
-        remove(errorFileName);
-    FILE *errorFile = fopen(errorFileName, "w");
+    if (!access("error.txt", 0))
+        remove("error.txt");
+    FILE *errorFile = fopen("error.txt", "w");
 
     char firstName[50];
     char lastName[50];
-
     printf("Enter your first name: ");
     getValidName(firstName, errorFile);
-
     printf("Enter your last name: ");
     getValidName(lastName, errorFile);
-
     printf("Hello, %s %s\n", firstName, lastName);
 
-    
-    
-
     int num1 = getValidNum();
-
     int num2 = getValidNum();
     printf("You entered %d and %d\n", num1, num2);
 
@@ -52,37 +43,37 @@ int main() // compile with: gcc -pedantic -Wall -Wextra -Werror defense.c -o def
     do
     {
         getValidPassword(password1);
+	printf("-->Enter the same password<--\n");
         getValidPassword(password2);
         result = strcmp(password1, password2);
         if (result != 0)
             fprintf(errorFile, "Passwords do not match. Try again.\n");
     } while (result != 0);
 
-    printf("You entered %s and %s", password1, password2);
+
+    printf("You entered %s and %s\n", password1, password2);
 
     FILE *inputFile = fopen(inputFileName, "r");
     FILE *outputFile = fopen(outputFileName, "a");
 
     writeToOutputFile(inputFile, outputFile, errorFile, firstName, lastName, num1 + num2, num1 * num2);
+
+    
+    fclose(errorFile);
+
 }
 
 int getValidNum()
 {
-    int num = 0;
+    int num;
     char buf[1024];
-
-    while(num == 0)
+    do
     {
-	printf("Enter any integer: ");
-	if(fgets(buf, 1024, stdin) != NULL)
-	{
-		num = atoi(buf);
-	}
-
-
-    }
-
-
+        printf("Enter any integer besides 0: ");
+        if (!fgets(buf, 1024, stdin))
+            return 1;
+        num = atoi(buf);
+    } while (num == 0);
 
     printf("You entered %d.\n", num);
     return num;
@@ -94,13 +85,13 @@ void getValidName(char *buffer, FILE *errorFile) //currently buffer overflowing
     do
     {
         scanf("%s", buffer);
-        valid = match(buffer, "[[:alpha:]]\\{1,50\\}", 0, errorFile);
-        if (valid == 0)
-            printf("\nEnter a name: ");
+        valid = match(buffer, "^[[:alpha:]].{1,50}$", 1, errorFile);
+	if(valid == 0)
+		printf("\nEnter a name: ");
     } while (valid == 0);
-
     printf("You entered %s\n", buffer);
     setbuf(stdin, NULL);
+
 }
 
 void getValidFileName(char *buffer, FILE *errorFile)
@@ -148,8 +139,9 @@ int validatePassword(const char *password)
         else if (ispunct(c))
             ++special;
         else
-            return 0; // invalid character
+	    return 0; // invalid character
     }
+
     return upper && lower && digit && special && count > 7 && count < 33;
 }
 
@@ -158,7 +150,6 @@ void writeToOutputFile(FILE *inputFile, FILE *outputFile, FILE *errorFile, const
     if (inputFile == NULL || outputFile == NULL)
     {
         fprintf(errorFile, "ERROR: could not open input or output file:\n");
-        fclose(errorFile);
         return;
     }
 
@@ -172,9 +163,7 @@ void writeToOutputFile(FILE *inputFile, FILE *outputFile, FILE *errorFile, const
     {
         putc(ch, outputFile);
     }
-    fclose(inputFile);
-    fclose(outputFile);
-    fclose(errorFile);
+
 }
 
 int match(const char *string, const char *pattern, int ignoreCase, FILE *errorFile)
@@ -202,7 +191,6 @@ int match(const char *string, const char *pattern, int ignoreCase, FILE *errorFi
         fprintf(errorFile, "The supplied input \"%s\" did not match against the regex \"%s\"\n", string, pattern);
         return 0;
     }
+    
     return 1;
 }
-
-
