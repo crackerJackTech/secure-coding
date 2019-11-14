@@ -79,7 +79,7 @@ int getValidNum()
     return num;
 }
 
-void getValidName(char *buffer, FILE *errorFile) //currently buffer overflowing
+void getValidName(char *buffer, FILE *errorFile)
 {
     int valid = 0;
     do
